@@ -51,10 +51,13 @@ namespace Parabox
 		{
 			string path = AssetDatabase.GUIDToAssetPath(guid);
 
-			FileAttributes attribs = File.GetAttributes(path);
+			if(!string.IsNullOrEmpty(path))
+			{
+				FileAttributes attribs = File.GetAttributes(path);
 
-			if( (attribs & FOLDER_SYMLINK_ATTRIBS) == FOLDER_SYMLINK_ATTRIBS )
-				GUI.Label(r, "<=>", symlinkMarkerStyle);
+				if((attribs & FOLDER_SYMLINK_ATTRIBS) == FOLDER_SYMLINK_ATTRIBS )
+					GUI.Label(r, "<=>", symlinkMarkerStyle);
+			}
 		}
 
 		/**
@@ -104,13 +107,15 @@ namespace Parabox
 			}
 
 	#if UNITY_EDITOR_WIN
-			Process.Start("CMD.exe", string.Format("/C mklink /J \"{0}\" \"{1}\"", targetPath, sourceFolderPath));
-			UnityEngine.Debug.Log(string.Format("Created symlink: {0} <=> {1}", targetPath, sourceFolderPath));
+			Process cmd = Process.Start("CMD.exe", string.Format("/C mklink /J \"{0}\" \"{1}\"", targetPath, sourceFolderPath));
+			cmd.WaitForExit();
 	#elif UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
 			// @todo
 	#endif
 			
-			AssetDatabase.Refresh();
+			// UnityEngine.Debug.Log(string.Format("Created symlink: {0} <=> {1}", targetPath, sourceFolderPath));
+
+			AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
 		}
 	}
 }
