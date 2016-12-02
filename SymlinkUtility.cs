@@ -71,6 +71,10 @@ namespace Parabox
 				return;
 			}
 
+			// Cancelled dialog
+			if( string.IsNullOrEmpty(sourceFolderPath) )
+				return;
+
 			string sourceFolderName = sourceFolderPath.Split(new char[] { '/', '\\' }).LastOrDefault();
 
 			if( string.IsNullOrEmpty(sourceFolderName) )
@@ -105,6 +109,8 @@ namespace Parabox
 	#elif UNITY_EDITOR_OSX || UNITY_EDITOR_LINUX
 			// @todo
 	#endif
+			
+			AssetDatabase.Refresh();
 		}
 	}
 }
