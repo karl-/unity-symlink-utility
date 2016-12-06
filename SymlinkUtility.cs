@@ -49,15 +49,19 @@ namespace Parabox
 		 */
 		private static void OnProjectWindowItemGUI(string guid, Rect r)
 		{
-			string path = AssetDatabase.GUIDToAssetPath(guid);
-
-			if(!string.IsNullOrEmpty(path))
+			try
 			{
-				FileAttributes attribs = File.GetAttributes(path);
+				string path = AssetDatabase.GUIDToAssetPath(guid);
 
-				if((attribs & FOLDER_SYMLINK_ATTRIBS) == FOLDER_SYMLINK_ATTRIBS )
-					GUI.Label(r, "<=>", symlinkMarkerStyle);
+				if(!string.IsNullOrEmpty(path))
+				{
+					FileAttributes attribs = File.GetAttributes(path);
+
+					if((attribs & FOLDER_SYMLINK_ATTRIBS) == FOLDER_SYMLINK_ATTRIBS )
+						GUI.Label(r, "<=>", symlinkMarkerStyle);
+				}
 			}
+			catch {}
 		}
 
 		/**
