@@ -159,8 +159,8 @@ namespace Parabox
                 sourcePath = string.Empty;
             }
 
-            var splitOutput = outputPath.Split(new char[1] { '/' }, System.StringSplitOptions.RemoveEmptyEntries);
-            var splitSource = sourcePath.Split(new char[1] { '/' }, System.StringSplitOptions.RemoveEmptyEntries);
+            var splitOutput = outputPath.Split(new char[1] { Path.PathSeparator }, System.StringSplitOptions.RemoveEmptyEntries);
+            var splitSource = sourcePath.Split(new char[1] { Path.PathSeparator }, System.StringSplitOptions.RemoveEmptyEntries);
 
             int max = Mathf.Min(splitOutput.Length, splitSource.Length);
             int i = 0;
@@ -184,7 +184,7 @@ namespace Parabox
             {
                 newSplitTarget[j] = splitSource[i];
             }
-            return string.Join("/", newSplitTarget);
+            return string.Join(Path.PathSeparator.ToString(), newSplitTarget);
         }
 
         static void ExecuteBashCommand(string command)
