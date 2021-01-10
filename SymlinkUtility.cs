@@ -1,4 +1,4 @@
-﻿using UnityEditor;
+using UnityEditor;
 using UnityEngine;
 using System.Collections;
 using System.IO;
@@ -17,6 +17,13 @@ namespace Parabox
     [InitializeOnLoad]
     public static class SymlinkUtility
     {
+        private enum SymlinkType
+        {
+            Junction,
+            Absolute,
+            Relative
+        }
+
         // FileAttributes that match a junction folder.
         const FileAttributes FOLDER_SYMLINK_ATTRIBS = FileAttributes.Directory | FileAttributes.ReparsePoint;
 
@@ -67,21 +74,30 @@ namespace Parabox
         /**
 		 *	Add a menu item in the Assets/Create category to add symlinks to directories.
 		 */
+#if UNITY_EDITOR_WIN
+        // Create an absolute junction
+        [MenuItem("Assets/Create/Folder (Junction)", false, 20)]
+        static void Junction()
+        {
+            Symlink(SymlinkType.Junction);
+        }
+#endif
+
         // Create an absolute symbolic link
-        [MenuItem("Assets/Create/Folder (Absolute Symlink)", false, 20)]
+        [MenuItem("Assets/Create/Folder (Absolute Symlink)", false, 21)]
         static void SymlinkAbsolute()
         {
-            Symlink(true);
+            Symlink(SymlinkType.Absolute);
         }
 
         // Create a relative symbolic link
-        [MenuItem("Assets/Create/Folder (Relative Symlink)", false, 21)]
+        [MenuItem("Assets/Create/Folder (Relative Symlink)", false, 22)]
         static void SymlinkRelative()
         {
-            Symlink(false);
+            Symlink(SymlinkType.Relative);
         }
 
-        static void Symlink(bool absolute)
+        static void Symlink(SymlinkType linkType)
         {
             string sourceFolderPath = EditorUtility.OpenFolderPanel("Select Folder Source", "", "");
 
@@ -127,12 +143,11 @@ namespace Parabox
             }
 
             // Use absolute path or relative path?
-            string sourcePath = absolute ? sourceFolderPath : GetRelativePath(sourceFolderPath, targetPath);
+            string sourcePath = linkType == SymlinkType.Relative ? GetRelativePath(sourceFolderPath, targetPath) : sourceFolderPath;
 #if UNITY_EDITOR_WIN
-			using (Process cmd = Process.Start("CMD.exe", string.Format("/C mklink /J \"{0}\" \"{1}\"", targetPath, sourcePath)))
-            {
-                cmd.WaitForExit();
-            }
+            string linkOption = linkType == SymlinkType.Junction ? "/J" : "/D";
+            string command = string.Format("mklink {0} \"{1}\" \"{2}\"", linkOption, targetPath, sourcePath);
+            ExecuteCmdCommand(command, linkType != SymlinkType.Junction); // Symlinks require admin privilege on windows, junctions do not.
 #elif UNITY_EDITOR_OSX
             // For some reason, OSX doesn't want to create a symlink with quotes around the paths, so escape the spaces instead.
             sourcePath = sourcePath.Replace(" ", "\\ ");
@@ -159,8 +174,8 @@ namespace Parabox
                 sourcePath = string.Empty;
             }
 
-            var splitOutput = outputPath.Split(new char[1] { Path.PathSeparator }, System.StringSplitOptions.RemoveEmptyEntries);
-            var splitSource = sourcePath.Split(new char[1] { Path.PathSeparator }, System.StringSplitOptions.RemoveEmptyEntries);
+            var splitOutput = outputPath.Split(new char[1] { '/' }, System.StringSplitOptions.RemoveEmptyEntries);
+            var splitSource = sourcePath.Split(new char[1] { '/' }, System.StringSplitOptions.RemoveEmptyEntries);
 
             int max = Mathf.Min(splitOutput.Length, splitSource.Length);
             int i = 0;
@@ -184,7 +199,38 @@ namespace Parabox
             {
                 newSplitTarget[j] = splitSource[i];
             }
-            return string.Join(Path.PathSeparator.ToString(), newSplitTarget);
+            return string.Join(Path.DirectorySeparatorChar.ToString(), newSplitTarget);
+        }
+
+        static void ExecuteCmdCommand(string command, bool asAdmin)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "CMD.exe",
+                Arguments = "/C " + command,
+                UseShellExecute = asAdmin,
+                RedirectStandardError = !asAdmin,
+                CreateNoWindow = true,
+            };
+            if (asAdmin)
+            {
+                startInfo.Verb = "runas"; // Runs process in admin mode. See https://stackoverflow.com/questions/2532769/how-to-start-a-process-as-administrator-mode-in-c-sharp
+            }
+            var proc = new Process()
+            {
+                StartInfo = startInfo
+            };
+
+            using (proc)
+            {
+                proc.Start();
+                proc.WaitForExit();
+
+                if (!asAdmin && !proc.StandardError.EndOfStream)
+                {
+                    UnityEngine.Debug.LogError(proc.StandardError.ReadToEnd());
+                }
+            }
         }
 
         static void ExecuteBashCommand(string command)
